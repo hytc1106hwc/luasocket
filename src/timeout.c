@@ -1,14 +1,13 @@
 /*=========================================================================*\
 * Timeout management functions
 * LuaSocket toolkit
+*
+* RCS ID: $Id: timeout.c,v 1.30 2005/10/07 04:40:59 diego Exp $
 \*=========================================================================*/
 #include <stdio.h>
-#include <limits.h>
-#include <float.h>
 
 #include "lua.h"
 #include "lauxlib.h"
-#include "compat.h"
 
 #include "auxiliar.h"
 #include "timeout.h"
@@ -34,7 +33,7 @@
 static int timeout_lua_gettime(lua_State *L);
 static int timeout_lua_sleep(lua_State *L);
 
-static luaL_Reg func[] = {
+static luaL_reg func[] = {
     { "gettime", timeout_lua_gettime },
     { "sleep", timeout_lua_sleep },
     { NULL, NULL }
@@ -53,7 +52,7 @@ void timeout_init(p_timeout tm, double block, double total) {
 
 /*-------------------------------------------------------------------------*\
 * Determines how much time we have left for the next system call,
-* if the previous call was successful
+* if the previous call was successful 
 * Input
 *   tm: timeout control structure
 * Returns
@@ -108,7 +107,7 @@ double timeout_getretry(p_timeout tm) {
 }
 
 /*-------------------------------------------------------------------------*\
-* Marks the operation start time in structure
+* Marks the operation start time in structure 
 * Input
 *   tm: timeout control structure
 \*-------------------------------------------------------------------------*/
@@ -118,7 +117,7 @@ p_timeout timeout_markstart(p_timeout tm) {
 }
 
 /*-------------------------------------------------------------------------*\
-* Gets time in s, relative to January 1, 1970 (UTC)
+* Gets time in s, relative to January 1, 1970 (UTC) 
 * Returns
 *   time in s.
 \*-------------------------------------------------------------------------*/
@@ -145,7 +144,7 @@ double timeout_gettime(void) {
 * Initializes module
 \*-------------------------------------------------------------------------*/
 int timeout_open(lua_State *L) {
-    luaL_setfuncs(L, func, 0);
+    luaL_openlib(L, NULL, func, 0);
     return 0;
 }
 
@@ -160,7 +159,7 @@ int timeout_meth_settimeout(lua_State *L, p_timeout tm) {
     const char *mode = luaL_optstring(L, 3, "b");
     switch (*mode) {
         case 'b':
-            tm->block = t;
+            tm->block = t; 
             break;
         case 'r': case 't':
             tm->total = t;
@@ -171,16 +170,6 @@ int timeout_meth_settimeout(lua_State *L, p_timeout tm) {
     }
     lua_pushnumber(L, 1);
     return 1;
-}
-
-/*-------------------------------------------------------------------------*\
-* Gets timeout values for IO operations
-* Lua Output: block, total
-\*-------------------------------------------------------------------------*/
-int timeout_meth_gettimeout(lua_State *L, p_timeout tm) {
-    lua_pushnumber(L, tm->block);
-    lua_pushnumber(L, tm->total);
-    return 2;
 }
 
 /*=========================================================================*\
@@ -198,23 +187,13 @@ static int timeout_lua_gettime(lua_State *L)
 /*-------------------------------------------------------------------------*\
 * Sleep for n seconds.
 \*-------------------------------------------------------------------------*/
+int timeout_lua_sleep(lua_State *L)
+{
+    double n = luaL_checknumber(L, 1);
 #ifdef _WIN32
-int timeout_lua_sleep(lua_State *L)
-{
-    double n = luaL_checknumber(L, 1);
-    if (n < 0.0) n = 0.0;
-    if (n < DBL_MAX/1000.0) n *= 1000.0;
-    if (n > INT_MAX) n = INT_MAX;
-    Sleep((int)n);
-    return 0;
-}
+    Sleep((int)(n*1000));
 #else
-int timeout_lua_sleep(lua_State *L)
-{
-    double n = luaL_checknumber(L, 1);
     struct timespec t, r;
-    if (n < 0.0) n = 0.0;
-    if (n > INT_MAX) n = INT_MAX;
     t.tv_sec = (int) n;
     n -= t.tv_sec;
     t.tv_nsec = (int) (n * 1000000000);
@@ -223,6 +202,6 @@ int timeout_lua_sleep(lua_State *L)
         t.tv_sec = r.tv_sec;
         t.tv_nsec = r.tv_nsec;
     }
+#endif
     return 0;
 }
-#endif

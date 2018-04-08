@@ -2,6 +2,7 @@
 -- LTN12 - Filters, sources, sinks and pumps.
 -- LuaSocket toolkit.
 -- Author: Diego Nehab
+-- RCS ID: $Id: ltn12.lua,v 1.31 2006/04/03 04:45:42 diego Exp $
 -----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------
@@ -9,25 +10,17 @@
 -----------------------------------------------------------------------------
 local string = require("string")
 local table = require("table")
-local unpack = unpack or table.unpack
 local base = _G
-local _M = {}
-if module then -- heuristic for exporting a global package table
-    ltn12 = _M
-end
-local filter,source,sink,pump = {},{},{},{}
+module("ltn12")
 
-_M.filter = filter
-_M.source = source
-_M.sink = sink
-_M.pump = pump
-
-local unpack = unpack or table.unpack
-local select = base.select
+filter = {}
+source = {}
+sink = {}
+pump = {}
 
 -- 2048 seems to be better in windows...
-_M.BLOCKSIZE = 2048
-_M._VERSION = "LTN12 1.0.3"
+BLOCKSIZE = 2048
+_VERSION = "LTN12 1.0.1"
 
 -----------------------------------------------------------------------------
 -- Filter stuff
@@ -45,8 +38,7 @@ end
 -- chains a bunch of filters together
 -- (thanks to Wim Couwenberg)
 function filter.chain(...)
-    local arg = {...}
-    local n = base.select('#',...)
+    local n = table.getn(arg)
     local top, index = 1, 1
     local retry = ""
     return function(chunk)
@@ -97,7 +89,7 @@ end
 function source.file(handle, io_err)
     if handle then
         return function()
-            local chunk = handle:read(_M.BLOCKSIZE)
+            local chunk = handle:read(BLOCKSIZE)
             if not chunk then handle:close() end
             return chunk
         end
@@ -120,8 +112,8 @@ function source.string(s)
     if s then
         local i = 1
         return function()
-            local chunk = string.sub(s, i, i+_M.BLOCKSIZE-1)
-            i = i + _M.BLOCKSIZE
+            local chunk = string.sub(s, i, i+BLOCKSIZE-1)
+            i = i + BLOCKSIZE
             if chunk ~= "" then return chunk
             else return nil end
         end
@@ -143,9 +135,7 @@ function source.rewind(src)
     end
 end
 
--- chains a source with one or several filter(s)
-function source.chain(src, f, ...)
-    if ... then f=filter.chain(f, ...) end
+function source.chain(src, f)
     base.assert(src and f)
     local last_in, last_out = "", ""
     local state = "feeding"
@@ -196,7 +186,6 @@ end
 -- other, as if they were concatenated
 -- (thanks to Wim Couwenberg)
 function source.cat(...)
-    local arg = {...}
     local src = table.remove(arg, 1)
     return function()
         while src do
@@ -260,13 +249,8 @@ function sink.error(err)
     end
 end
 
--- chains a sink with one or several filter(s)
-function sink.chain(f, snk, ...)
-    if ... then
-        local args = { f, snk, ... }
-        snk = table.remove(args, #args)
-        f = filter.chain(unpack(args))
-    end
+-- chains a sink with a filter
+function sink.chain(f, snk)
     base.assert(f and snk)
     return function(chunk, err)
         if chunk ~= "" then
@@ -306,4 +290,3 @@ function pump.all(src, snk, step)
     end
 end
 
-return _M
